@@ -1,0 +1,1 @@
+pasta onde o script salva a sessão do whatsapp
