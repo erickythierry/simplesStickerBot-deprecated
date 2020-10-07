@@ -320,26 +320,6 @@ class WhatsAPIDriver(object):
     def screenshot(self, filename):
         self.driver.get_screenshot_as_file(filename)
 
-    def get_battery_level(self):
-        """
-        Check the battery level of device
-
-        :return: int: Battery level
-        """
-        return self.wapi_functions.getBatteryLevel()
-
-    def set_presence(self, present):
-        """
-        Set presence to 'online' or not
-        """
-        return self.wapi_functions.setPresence(present)
-
-    def set_profile_status(self, status):
-        return self.wapi_functions.setMyStatus(status)
-
-    def set_profile_name(self, name):
-        return self.wapi_functions.setMyName(name)
-
     #################
     # QR
     #################
@@ -468,13 +448,6 @@ class WhatsAPIDriver(object):
         """
         my_contacts = self.wapi_functions.getMyContacts()
         return [Contact(contact, self) for contact in my_contacts]
-
-    def get_all_groups(self):
-        chats = self.wapi_functions.getAllGroups()
-        if chats:
-            return [factory_chat(chat, self) for chat in chats]
-        else:
-            return []
 
     def get_all_chats(self):
         """
@@ -667,15 +640,7 @@ class WhatsAPIDriver(object):
         result = self.wapi_functions.sendMessage(chat_id, message)
 
         return isinstance(result, str)
-
-    def reply_message(self, chat_id, message_id, message):
-        result = self.wapi_functions.reply(chat_id, message, message_id)
-
-        return bool(result)
-
-    def forward_messages(self, chat_id_to, message_ids, skip_my_messages=False):
-        return self.wapi_functions.forwardMessages(chat_id_to, message_ids, skip_my_messages)
-
+    
     def send_image_as_sticker(self, path, chatid):
         """
         Converts the file to base64 and sends it using the sendImageAsSticker function of wapi.js
@@ -704,62 +669,6 @@ class WhatsAPIDriver(object):
         filename = os.path.split(path)[-1]
         return self.wapi_functions.sendImage(imgBase64, chatid, filename, caption)
 
-    def send_video_as_gif(self, path, chatid, caption):
-        """
-        :param path: video file path
-        :param chatid: chatId to be sent
-        :param caption: text to send with video
-        :return:
-        """
-        imgBase64 = convert_to_base64(path)
-        filename = os.path.split(path)[-1]
-        return self.wapi_functions.sendVideoAsGif(imgBase64, chatid, filename, caption)
-
-    def send_giphy(self, giphy_url, chat_id, caption):
-        match = re.search(r'https?:\/\/media\.giphy\.com\/media\/([a-zA-Z0-9]+)', giphy_url)
-        if match:
-            giphy_id = match.group(1)
-            filename = giphy_id + '.mp4'
-            resp = requests.get('https://i.giphy.com/' + filename)
-            b64 = convert_to_base64(io.BytesIO(resp.content))
-            return self.wapi_functions.sendVideoAsGif(b64, chat_id, filename, caption)
-
-    def send_contact(self, chat_id, contact_ids):
-        return self.wapi_functions.sendContact(chat_id, contact_ids)
-
-    def send_location(self, chat_id, lat, long, text):
-        return self.wapi_functions.sendLocation(chat_id, lat, long, text)
-
-    def send_message_with_thumbnail(self, path, chatid, url, title, description):
-        """
-            converts the file to base64 and sends it using the sendImage function of wapi.js
-        :param path: image file path
-        :param chatid: chatId to be sent
-        :param url: of thumbnail
-        :param title: of thumbnail
-        :param description: of thumbnail
-        :return:
-        """
-        imgBase64 = convert_to_base64(path, is_thumbnail=True)
-        return self.wapi_functions.sendMessageWithThumb(imgBase64, url, title, description, chatid)
-
-    def send_message_with_auto_preview(self, chat_id, url, text):
-        return self.wapi_functions.sendLinkWithAutoPreview(chat_id, url, text)
-
-    def delete_message(self, chat_id, message_array, revoke=False):
-        """
-        Delete a chat
-
-        :param chat_id: id of chat
-        :param message_array: one or more message(s) id
-        :param revoke: Set to true so the message will be deleted for everyone, not only you
-        :return:
-        """
-        return self.wapi_functions.deleteMessage(chat_id, message_array, revoke)
-
-    def set_typing_simulation(self, chat_id, typing):
-        return self.wapi_functions.simulateTyping(chat_id, typing)
-
     def download_media(self, media_msg, force_download=False):
         if not force_download:
             try:
@@ -786,61 +695,6 @@ class WhatsAPIDriver(object):
         cr_obj = Cipher(algorithms.AES(cipher_key), modes.CBC(iv), backend=default_backend())
         decryptor = cr_obj.decryptor()
         return BytesIO(decryptor.update(e_file) + decryptor.finalize())
-
-    #################
-    # Groups
-    #################
-    def contact_get_common_groups(self, contact_id):
-        """
-        Returns groups common between a user and the contact with given id.
-
-        :return: Contact or Error
-        :rtype: Contact
-        """
-        for group in self.wapi_functions.getCommonGroups(contact_id):
-            yield factory_chat(group, self)
-
-    def create_group(self, name, chat_ids):
-        return self.wapi_functions.createGroup(name, chat_ids)
-
-    def group_get_participants_ids(self, group_id):
-        return self.wapi_functions.getGroupParticipantIDs(group_id)
-
-    def group_get_participants(self, group_id):
-        participant_ids = self.group_get_participants_ids(group_id)
-
-        for participant_id in participant_ids:
-            yield self.get_contact_from_id(participant_id)
-
-    def group_get_admin_ids(self, group_id):
-        return self.wapi_functions.getGroupAdmins(group_id)
-
-    def group_get_admins(self, group_id):
-        admin_ids = self.group_get_admin_ids(group_id)
-
-        for admin_id in admin_ids:
-            yield self.get_contact_from_id(admin_id)
-
-    def add_participant_group(self, idGroup, idParticipant):
-        return self.wapi_functions.addParticipant(idGroup, idParticipant)
-
-    def remove_participant_group(self, idGroup, idParticipant):
-        return self.wapi_functions.removeParticipant(idGroup, idParticipant)
-
-    def promove_participant_admin_group(self, idGroup, idParticipant):
-        return self.wapi_functions.promoteParticipant(idGroup, idParticipant)
-
-    def demote_participant_admin_group(self, idGroup, idParticipant):
-        return self.wapi_functions.demoteParticipant(idGroup, idParticipant)
-
-    def leave_group(self, chat_id):
-        """
-        Leave a group
-
-        :param chat_id: id of group
-        :return:
-        """
-        return self.wapi_functions.leaveGroup(chat_id)
 
     #################
     # Observer
